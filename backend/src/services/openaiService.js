@@ -1,15 +1,19 @@
 // backend/src/services/openaiService.js
 import OpenAI from "openai";
-console.log(process.env.API_KEY);
-const openai = new OpenAI({
-  apiKey: process.env.API_KEY,
+import { Ollama } from "ollama";
+
+const ollama = new Ollama({
+  host: "https://ollama.com",
+  headers: {
+    Authorization: "Bearer " + "token",
+  },
 });
 
 // System prompts for different interview types
 const getSystemPrompt = (interviewType, topic, difficulty) => {
   const prompts = {
     technical: `You are an expert technical interviewer conducting a ${difficulty} level interview for ${topic}. 
-    Ask relevant technical questions, dive deeper based on responses, and maintain a professional yet friendly tone.
+    Ask relevant technical questions, make 1 line question and you don't have to answer the question, and maintain a professional yet friendly tone.
     Ask one question at a time and build upon the candidate's answers.`,
 
     hr: `You are an experienced HR interviewer conducting a ${difficulty} level behavioral interview.
@@ -39,14 +43,21 @@ export async function generateResponse(
       ...conversationHistory,
     ];
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+    // const completion = await openai.chat.completions.create({
+    //   model: "gpt-4",
+    //   messages: messages,
+    //   max_tokens: 300,
+    //   temperature: 0.7,
+    // });
+
+    const completion = await ollama.chat({
+      model: "gpt-oss:120b-cloud",
       messages: messages,
-      max_tokens: 300,
-      temperature: 0.7,
     });
 
-    return completion.choices[0].message.content;
+    console.log(completion);
+
+    return completion.message.content;
   } catch (error) {
     console.error("OpenAI API error:", error);
     throw new Error("Failed to generate AI response");
@@ -113,17 +124,15 @@ export async function generateOpeningQuestion(
     const systemPrompt = getSystemPrompt(interviewType, topic, difficulty);
     const userPrompt = `Start the interview with an appropriate opening question.`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5",
+    const completion = await ollama.chat({
+      model: "gpt-oss:120b-cloud",
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: "assistant", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      max_tokens: 200,
-      temperature: 0.7,
     });
 
-    return completion.choices[0].message.content;
+    return completion.message.content;
   } catch (error) {
     console.error("Opening question error:", error);
     throw new Error("Failed to generate opening question");
